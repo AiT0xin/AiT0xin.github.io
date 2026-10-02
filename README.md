@@ -2,4 +2,4 @@
 
 Interactive dot banner for my GitHub profile. Move the mouse to push the dots, click to scatter them.
 
-Live at https://aitoxin.github.io
+Live at https://ait0xin.github.io
