@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AiT0xin</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #09090f; overflow: hidden; }
+  canvas { display: block; width: 100vw; height: 100vh; touch-action: none; cursor: crosshair; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const TEXT = 'AiT0xin';
+const GAP = 6;       // spacing between dots
+const RADIUS = 90;   // how far the mouse pushes dots
+let dots = [], mouse = { x: -9999, y: -9999 }, W, H;
+
+// Pink (#ff11c4) on the left fading to red (#fc031e) on the right
+function mix(t) {
+  t = Math.max(0, Math.min(1, t));
+  const a = [255, 17, 196], b = [252, 3, 30];
+  return `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * t)).join(',')})`;
+}
+
+function build() {
+  const dpr = window.devicePixelRatio || 1;
+  W = innerWidth; H = innerHeight;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  // Draw the word on a hidden canvas, then place a dot wherever there is ink
+  const off = document.createElement('canvas');
+  off.width = W; off.height = H;
+  const o = off.getContext('2d');
+  const size = Math.min(W / 4.2, H / 2.2);
+  o.font = `900 ${size}px "Arial Black", Arial, sans-serif`;
+  o.textAlign = 'center'; o.textBaseline = 'middle';
+  o.fillStyle = '#fff';
+  o.fillText(TEXT, W / 2, H / 2);
+  const tw = o.measureText(TEXT).width, left = W / 2 - tw / 2;
+  const data = o.getImageData(0, 0, W, H).data;
+
+  dots = [];
+  for (let y = 0; y < H; y += GAP) {
+    for (let x = 0; x < W; x += GAP) {
+      if (data[(y * W + x) * 4 + 3] > 128) {
+        dots.push({
+          hx: x, hy: y,                                // home position
+          x: Math.random() * W, y: Math.random() * H,  // start scattered
+          vx: 0, vy: 0,
+          color: mix((x - left) / tw)
+        });
+      }
+    }
+  }
+}
+
+function tick() {
+  ctx.clearRect(0, 0, W, H);
+  for (const d of dots) {
+    const dx = d.x - mouse.x, dy = d.y - mouse.y, dist = Math.hypot(dx, dy);
+    if (dist < RADIUS && dist > 0) {            // push away from the mouse
+      const f = (RADIUS - dist) / RADIUS * 6;
+      d.vx += dx / dist * f; d.vy += dy / dist * f;
+    }
+    d.vx += (d.hx - d.x) * 0.02;                // spring back home
+    d.vy += (d.hy - d.y) * 0.02;
+    d.vx *= 0.85; d.vy *= 0.85;                 // friction
+    d.x += d.vx; d.y += d.vy;
+    ctx.fillStyle = d.color;
+    ctx.beginPath();
+    ctx.arc(d.x, d.y, GAP * 0.33, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  requestAnimationFrame(tick);
+}
+
+canvas.addEventListener('pointermove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+canvas.addEventListener('pointerleave', () => { mouse.x = mouse.y = -9999; });
+canvas.addEventListener('pointerdown', () => {   // click or tap to explode
+  for (const d of dots) { d.vx += (Math.random() - 0.5) * 60; d.vy += (Math.random() - 0.5) * 60; }
+});
+let t;
+addEventListener('resize', () => { clearTimeout(t); t = setTimeout(build, 150); });
+
+build();
+tick();
+</script>
+</body>
+</html>
